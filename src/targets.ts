@@ -112,7 +112,10 @@ function buildSidebarCard(host: HTMLElement, kind: Mode) {
 	card.style.setProperty("--lypos-card-h", store.cfg.cardRatio + "%");
 	card.style.setProperty("--lypos-font", store.cfg.fontSize + "px");
 	// Clear the sidebar's overlay header (context title, NPV buttons, ...).
-	card.style.marginTop = store.cfg.cardTopOffset + "px";
+	// The Now Playing View occasionally renders its album/title text below
+	// the card without a small top offset, hence the separate right-side default.
+	card.style.marginTop =
+		(kind === "right" ? store.cfg.rightCardTopOffset : store.cfg.cardTopOffset) + "px";
 
 	const ui = makeContentUI(document, { closable: true });
 	card.append(ui.toolbar, ui.scroller);

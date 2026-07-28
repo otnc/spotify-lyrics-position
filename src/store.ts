@@ -41,8 +41,11 @@ export interface Config {
 	fontSize: number;
 	/** Sidebar card height in % of the sidebar (default ~4/11). */
 	cardRatio: number;
-	/** Top margin (px) so the card clears the sidebar's overlay header/buttons. */
+	/** Top margin (px) for the left-sidebar card, so it clears any overlay header/buttons. */
 	cardTopOffset: number;
+	/** Top margin (px) for the right-sidebar card; the Now Playing View sometimes
+	 *  renders its album/title text below the card without this. */
+	rightCardTopOffset: number;
 	provider: Provider;
 	/** Hijack the official lyrics button; off restores the built-in lyrics page. */
 	hookOfficial: boolean;
@@ -59,6 +62,7 @@ export const DEFAULTS: Config = {
 	fontSize: 17,
 	cardRatio: 36,
 	cardTopOffset: 0,
+	rightCardTopOffset: 50,
 	provider: "auto",
 	hookOfficial: true,
 	autoScroll: true,

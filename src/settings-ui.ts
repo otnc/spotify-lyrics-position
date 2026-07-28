@@ -127,10 +127,17 @@ export function openSettings() {
 		}),
 	);
 	wrap.appendChild(
-		numberRow(t("setCardTop"), cfg.cardTopOffset, 0, 200, (v) => {
+		numberRow(t("setCardTopLeft"), cfg.cardTopOffset, 0, 200, (v) => {
 			cfg.cardTopOffset = v;
 			saveCfg();
-			if (cfg.mode === "right" || cfg.mode === "left") applyMode();
+			if (cfg.mode === "left") applyMode();
+		}),
+	);
+	wrap.appendChild(
+		numberRow(t("setCardTopRight"), cfg.rightCardTopOffset, 0, 200, (v) => {
+			cfg.rightCardTopOffset = v;
+			saveCfg();
+			if (cfg.mode === "right") applyMode();
 		}),
 	);
 	wrap.appendChild(
