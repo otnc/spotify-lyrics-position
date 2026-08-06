@@ -2,7 +2,7 @@ import { resetCfg, saveCfg } from "./config";
 import { t } from "./i18n";
 import { loadLyrics } from "./lyrics";
 import { applyMode, setMode } from "./modes";
-import { Language, LOG, Mode, Provider, store } from "./store";
+import { DEFAULTS, Language, LOG, Mode, POPUP_MIN_H, POPUP_MIN_W, Provider, store } from "./store";
 import { refreshUiLanguage, updateButton } from "./ui-buttons";
 
 function checkboxRow(label: string, checked: boolean, onChange: (v: boolean) => void): HTMLElement {
@@ -145,6 +145,34 @@ export function openSettings() {
 			cfg.fontSize = v;
 			saveCfg();
 			store.target?.root.style.setProperty("--lypos-font", v + "px");
+		}),
+	);
+	wrap.appendChild(
+		numberRow(t("setPopupWidth"), cfg.popup.w, POPUP_MIN_W, 1000, (v) => {
+			cfg.popup.w = v;
+			saveCfg();
+			if (cfg.mode === "popup") applyMode();
+		}),
+	);
+	wrap.appendChild(
+		numberRow(t("setPopupHeight"), cfg.popup.h, POPUP_MIN_H, 1000, (v) => {
+			cfg.popup.h = v;
+			saveCfg();
+			if (cfg.mode === "popup") applyMode();
+		}),
+	);
+	wrap.appendChild(
+		numberRow(t("setWinWidth"), cfg.win.w, DEFAULTS.win.w, 1000, (v) => {
+			cfg.win.w = v;
+			saveCfg();
+			if (cfg.mode === "window") applyMode();
+		}),
+	);
+	wrap.appendChild(
+		numberRow(t("setWinHeight"), cfg.win.h, DEFAULTS.win.h, 1000, (v) => {
+			cfg.win.h = v;
+			saveCfg();
+			if (cfg.mode === "window") applyMode();
 		}),
 	);
 	wrap.appendChild(

@@ -4,7 +4,7 @@ import { loadLyrics } from "./lyrics";
 import { setMode } from "./modes";
 import { applyColors, renderLyrics } from "./render";
 import { openSettings } from "./settings-ui";
-import { LOG, Mode, store } from "./store";
+import { DEFAULTS, LOG, Mode, POPUP_MIN_H, POPUP_MIN_W, store } from "./store";
 import { injectStyles } from "./styles";
 import { updateButton } from "./ui-buttons";
 
@@ -187,6 +187,8 @@ export function createPopup() {
 	panel.style.top = p.y + "px";
 	panel.style.width = p.w + "px";
 	panel.style.height = p.h + "px";
+	panel.style.minWidth = POPUP_MIN_W + "px";
+	panel.style.minHeight = POPUP_MIN_H + "px";
 	panel.style.setProperty("--lypos-font", store.cfg.fontSize + "px");
 
 	const ui = makeContentUI(document, { closable: true });
@@ -240,17 +242,52 @@ export function createPopup() {
 
 /* ---------- Separate window ---------- */
 
-export function createWindow() {
+export async function createWindow() {
 	const cfg = store.cfg;
-	const win = window.open(
-		"",
-		"lyrics-position-window",
-		`popup=yes,width=${cfg.win.w},height=${cfg.win.h}`,
-	);
-	if (!win) {
-		Spicetify.showNotification?.(t("notifNoWindow"), true);
-		setMode("popup");
+
+	// Spotify's window.open()-based popups get silently snapped to a fixed
+	// internal default size shortly after creation (confirmed by watching
+	// outerWidth/outerHeight over time — neither the features string nor
+	// resizeTo() survives it). The Document Picture-in-Picture API is a
+	// separate code path that Spotify's CEF build enables explicitly
+	// (--enable-blink-features=DocumentPictureInPictureCefOptions) and it
+	// honors the requested size exactly, so prefer it when available.
+	let win: Window | null = null;
+	if (window.documentPictureInPicture) {
+		try {
+			win = await window.documentPictureInPicture.requestWindow({
+				width: cfg.win.w,
+				height: cfg.win.h,
+			});
+		} catch (e) {
+			console.warn(LOG, "Document Picture-in-Picture unavailable, falling back:", e);
+		}
+	}
+	// The mode may have changed while awaiting the PiP window above.
+	if (win && store.cfg.mode !== "window") {
+		try {
+			win.close();
+		} catch {}
 		return;
+	}
+
+	if (!win) {
+		// Fallback for older Spotify builds without Picture-in-Picture.
+		// `resizable=yes` must be explicit — without it some Chromium embeds
+		// default popups to a fixed size or a much larger minimum.
+		win = window.open(
+			"",
+			"lyrics-position-window",
+			`popup=yes,resizable=yes,width=${cfg.win.w},height=${cfg.win.h}`,
+		);
+		if (!win) {
+			Spicetify.showNotification?.(t("notifNoWindow"), true);
+			setMode("popup");
+			return;
+		}
+		try {
+			win.resizeTo(cfg.win.w, cfg.win.h);
+		} catch {}
 	}
 	const doc = win.document;
 	doc.title = `${t("title")} - Lyrics Position`;
@@ -266,26 +303,93 @@ export function createWindow() {
 	const root = doc.createElement("div");
 	root.className = "lypos-root";
 	root.style.setProperty("--lypos-font", cfg.fontSize + "px");
-	const ui = makeContentUI(doc, { closable: false });
+	// Picture-in-Picture windows have no native title bar/close button in
+	// this CEF build, so the toolbar has to provide move/maximize/close itself.
+	const ui = makeContentUI(doc, { closable: true });
 	root.append(ui.toolbar, ui.scroller);
 	doc.body.appendChild(root);
 
+	// Drag the toolbar to move the window (there is no native title bar to drag).
+	ui.toolbar.style.cursor = "move";
+	ui.toolbar.addEventListener("pointerdown", (e) => {
+		if ((e.target as HTMLElement).closest(".lypos-btn")) return;
+		e.preventDefault();
+		ui.toolbar.setPointerCapture(e.pointerId);
+		const startScreenX = e.screenX;
+		const startScreenY = e.screenY;
+		const startWinX = win.screenX;
+		const startWinY = win.screenY;
+		const onMove = (ev: PointerEvent) => {
+			win.moveTo(startWinX + (ev.screenX - startScreenX), startWinY + (ev.screenY - startScreenY));
+		};
+		const onUp = () => {
+			ui.toolbar.removeEventListener("pointermove", onMove);
+			ui.toolbar.removeEventListener("pointerup", onUp);
+		};
+		ui.toolbar.addEventListener("pointermove", onMove);
+		ui.toolbar.addEventListener("pointerup", onUp);
+	});
+
+	// There is no window.maximize() API, so fake it: remember the bounds and
+	// resize to the available screen, then restore them on the next click.
+	let maximized = false;
+	let restoreBounds = { x: win.screenX, y: win.screenY, w: win.outerWidth, h: win.outerHeight };
+	const maxBtn = doc.createElement("button");
+	maxBtn.className = "lypos-btn";
+	maxBtn.textContent = "⛶";
+	maxBtn.title = t("tipMaximize");
+	maxBtn.onclick = () => {
+		if (!maximized) {
+			restoreBounds = { x: win.screenX, y: win.screenY, w: win.outerWidth, h: win.outerHeight };
+			maximized = true;
+			win.moveTo(0, 0);
+			win.resizeTo(screen.availWidth, screen.availHeight);
+			maxBtn.title = t("tipRestore");
+		} else {
+			maximized = false;
+			win.moveTo(restoreBounds.x, restoreBounds.y);
+			win.resizeTo(restoreBounds.w, restoreBounds.h);
+			maxBtn.title = t("tipMaximize");
+		}
+	};
+	// Insert before the close (✕) button, which makeContentUI appends last.
+	ui.toolbar.insertBefore(maxBtn, ui.toolbar.lastElementChild);
+
 	win.addEventListener("resize", () => {
-		store.cfg.win.w = win.outerWidth;
-		store.cfg.win.h = win.outerHeight;
+		// The maximize toggle above resizes intentionally past the floor —
+		// don't treat that as the new remembered size.
+		if (maximized) return;
+		// Native windows have no CSS min-width/min-height, so the same floor
+		// the in-app popup gets from CSS is enforced here by snapping back.
+		let w = win.outerWidth;
+		let h = win.outerHeight;
+		if (w < DEFAULTS.win.w || h < DEFAULTS.win.h) {
+			w = Math.max(w, DEFAULTS.win.w);
+			h = Math.max(h, DEFAULTS.win.h);
+			win.resizeTo(w, h);
+		}
+		store.cfg.win.w = w;
+		store.cfg.win.h = h;
 		saveCfg();
 	});
 
-	const watcher = setInterval(() => {
-		if (win.closed) {
-			clearInterval(watcher);
-			if (store.cfg.mode === "window") {
-				store.cfg.mode = "off";
-				saveCfg();
-				destroyTarget();
-				updateButton();
-			}
+	let closeHandled = false;
+	const handleClose = () => {
+		if (closeHandled) return;
+		closeHandled = true;
+		clearInterval(watcher);
+		if (store.cfg.mode === "window") {
+			store.cfg.mode = "off";
+			saveCfg();
+			destroyTarget();
+			updateButton();
 		}
+	};
+	// `pagehide` is the documented close signal for Picture-in-Picture
+	// windows; the polling watcher is a fallback for the window.open() path.
+	win.addEventListener("pagehide", handleClose);
+	const watcher = setInterval(() => {
+		if (win.closed) handleClose();
 	}, 800);
 
 	store.target = {

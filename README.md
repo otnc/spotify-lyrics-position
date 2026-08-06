@@ -65,6 +65,15 @@ See the official installation guide: https://spicetify.app/docs/getting-started
 - To keep the separate window always on top on Windows, PowerToys "Always on Top" (Win+Ctrl+T) works well
 - When lyrics cannot be fetched, the reason (403 / not found, etc.) is shown in the card
 
+### Known limitation: separate window move/enlarge (multi-monitor)
+
+The separate window is a real OS window created via the Document Picture-in-Picture API (its size is otherwise unreliable in this app — see [CONTRIBUTING.md](CONTRIBUTING.md) for details). Testing on a multi-monitor setup found that Spotify's own window placement code:
+
+- Clamps the window's X position so it can never move further left than the primary monitor's width, regardless of where you drag it — dragging onto the primary display or a monitor to its left doesn't work.
+- Snaps any script-driven resize above roughly half the display's size back down within ~300ms — a true "maximize to full screen" isn't achievable.
+
+Both happen in Spotify's native app code, outside of what a Spicetify extension (which only runs inside the web page) can influence, so there's no fix available at this layer. If you need guaranteed free positioning and resizing, use the **in-app popup** instead — it's a plain DOM element (not a real OS window) and isn't affected by this, though it's naturally confined to the Spotify window itself. The separate window still always opens on whichever monitor Spotify itself is currently on.
+
 ## Uninstall
 
 ```
