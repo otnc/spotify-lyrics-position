@@ -19,7 +19,9 @@ export function applyMode() {
 			createPopup();
 			break;
 		case "window":
-			createWindow();
+			// Async (Picture-in-Picture request); intentionally not awaited —
+			// applyMode() stays synchronous, createWindow sets store.target itself.
+			void createWindow();
 			break;
 	}
 	if (mode !== "off") store.cfg.lastMode = mode;

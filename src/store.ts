@@ -68,8 +68,15 @@ export const DEFAULTS: Config = {
 	autoScroll: true,
 	language: "auto",
 	popup: { x: 80, y: 120, w: 360, h: 480 },
-	win: { w: 380, h: 560 },
+	// Same size as the in-app popup — neither is meant to shrink below this.
+	win: { w: 360, h: 480 },
 };
+
+// How far below the default size the in-app popup's resize handle is allowed
+// to shrink it. Only the popup — the separate window keeps DEFAULTS.win as
+// its floor.
+export const POPUP_MIN_W = DEFAULTS.popup.w - 50;
+export const POPUP_MIN_H = DEFAULTS.popup.h - 150;
 
 export const store = {
 	cfg: structuredClone(DEFAULTS),
