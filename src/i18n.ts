@@ -3,6 +3,8 @@ import { store } from "./store";
 const en = {
 	title: "Lyrics",
 	tipRefetch: "Refetch lyrics",
+	tipCopyAll: "Copy all lyrics",
+	tipLineHint: "Click to seek · right-click to copy this line",
 	tipSettings: "Settings",
 	tipClose: "Close",
 	// Spotify's own window handling caps how large a script-resized window can
@@ -52,6 +54,10 @@ const en = {
 	notifOff:
 		"Lyrics hidden. Open settings from the profile menu or by right-clicking the lyrics button.",
 	notifNoWindow: "Could not open a separate window",
+	notifCopiedAll: "Copied all lyrics",
+	notifCopiedLine: "Copied line",
+	notifCopyFailed: "Couldn't copy to clipboard",
+	notifNothingToCopy: "No lyrics to copy",
 	barLabel: "Lyrics position (right-click for settings)",
 };
 
@@ -60,6 +66,8 @@ export type MsgKey = keyof typeof en;
 const ja: Record<MsgKey, string> = {
 	title: "歌詞",
 	tipRefetch: "歌詞を再取得",
+	tipCopyAll: "歌詞を全てコピー",
+	tipLineHint: "クリックでシーク・右クリックでこの行をコピー",
 	tipSettings: "設定",
 	tipClose: "閉じる",
 	tipMaximize: "拡大表示",
@@ -106,6 +114,10 @@ const ja: Record<MsgKey, string> = {
 	notifOff:
 		"歌詞表示をオフにしました。設定はプロフィールメニュー、または歌詞ボタンの右クリックから開けます",
 	notifNoWindow: "別ウィンドウを開けませんでした",
+	notifCopiedAll: "歌詞全体をコピーしました",
+	notifCopiedLine: "この行をコピーしました",
+	notifCopyFailed: "クリップボードにコピーできませんでした",
+	notifNothingToCopy: "コピーする歌詞がありません",
 	barLabel: "歌詞の位置 (右クリックで設定)",
 };
 

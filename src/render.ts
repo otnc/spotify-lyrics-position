@@ -1,6 +1,38 @@
 import { t } from "./i18n";
-import { store } from "./store";
+import { LOG, store } from "./store";
 import { getTrackInfo } from "./track";
+
+function getAllLyricsText(): string | null {
+	const s = store.lyrics;
+	if (s.synced) {
+		const text = s.synced
+			.map((l) => l.text)
+			.filter(Boolean)
+			.join("\n");
+		return text || null;
+	}
+	return s.plain || null;
+}
+
+async function copyText(text: string, successKey: "notifCopiedAll" | "notifCopiedLine") {
+	try {
+		await navigator.clipboard.writeText(text);
+		Spicetify.showNotification?.(t(successKey));
+	} catch (e) {
+		console.warn(LOG, "copy failed:", e);
+		Spicetify.showNotification?.(t("notifCopyFailed"), true);
+	}
+}
+
+/** Copies the whole lyrics (synced line text, or the plain block) to the clipboard. */
+export function copyAllLyrics() {
+	const text = getAllLyricsText();
+	if (!text) {
+		Spicetify.showNotification?.(t("notifNothingToCopy"));
+		return;
+	}
+	void copyText(text, "notifCopiedAll");
+}
 
 /** Official-like palette: on album-color backgrounds, unsung lines are dark, sung lines white. */
 export function applyColors() {
@@ -57,7 +89,13 @@ export function renderLyrics() {
 			const el = doc.createElement("div");
 			el.className = "lypos-line";
 			el.textContent = line.text || "♪";
+			el.title = t("tipLineHint");
 			el.addEventListener("click", () => Spicetify.Player.seek(line.time));
+			el.addEventListener("contextmenu", (e) => {
+				if (!line.text) return; // nothing to copy for an instrumental marker
+				e.preventDefault();
+				void copyText(line.text, "notifCopiedLine");
+			});
 			content.appendChild(el);
 			store.lineEls.push(el);
 		}
