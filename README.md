@@ -15,6 +15,7 @@ A [Spicetify](https://spicetify.app/) extension that shows lyrics wherever you w
 - **The official lyrics button (microphone icon) toggles this display** instead of the built-in center page (can be turned off to restore the default behavior)
 - Official-style look: album-color background, unsung lines dark, sung/current lines white
 - Synced lyrics with highlighting and auto-scroll (auto-scroll can be disabled); click a line to seek
+- Copy lyrics: the toolbar's copy button copies the whole lyrics, and right-clicking a line copies just that line
 - Lyrics sources: official Spotify lyrics with automatic fallback to [LRCLIB](https://lrclib.net/)
 - English / Japanese UI — follows your Spotify language by default, switchable in settings
 - Reset-to-defaults button

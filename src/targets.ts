@@ -2,7 +2,7 @@ import { saveCfg } from "./config";
 import { t } from "./i18n";
 import { loadLyrics } from "./lyrics";
 import { setMode } from "./modes";
-import { applyColors, renderLyrics } from "./render";
+import { applyColors, copyAllLyrics, renderLyrics } from "./render";
 import { openSettings } from "./settings-ui";
 import { DEFAULTS, LOG, Mode, POPUP_MIN_H, POPUP_MIN_W, store } from "./store";
 import { injectStyles } from "./styles";
@@ -39,6 +39,7 @@ function makeContentUI(doc: Document, { closable }: { closable: boolean }): Cont
 		title,
 		sourceEl,
 		button(t("tipRefetch"), "↻", () => loadLyrics(true)),
+		button(t("tipCopyAll"), "⧉", () => copyAllLyrics()),
 		button(t("tipSettings"), "⚙", () => openSettings()),
 	);
 	if (closable) toolbar.append(button(t("tipClose"), "✕", () => setMode("off")));

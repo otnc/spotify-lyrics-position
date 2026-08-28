@@ -11,7 +11,6 @@ function init() {
 	if (
 		!window.Spicetify?.Player?.addEventListener ||
 		!Spicetify.CosmosAsync ||
-		!Spicetify.PopupModal ||
 		!Spicetify.Menu ||
 		!document.body
 	) {
