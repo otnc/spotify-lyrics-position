@@ -64,8 +64,65 @@ function selectRow(
 	return row;
 }
 
+let modalOverlay: HTMLElement | null = null;
+
+function onModalKeydown(e: KeyboardEvent) {
+	if (e.key === "Escape") closeSettings();
+}
+
+export function closeSettings() {
+	if (!modalOverlay) return;
+	document.removeEventListener("keydown", onModalKeydown);
+	modalOverlay.remove();
+	modalOverlay = null;
+}
+
+/**
+ * Builds (or reuses) our own modal overlay instead of Spicetify.PopupModal.display().
+ * Spotify's own generic-modal component has, across client updates, ended up
+ * borrowing another feature's narrow fixed-width layout for arbitrary content
+ * — breaking this dialog with no change on our side. Owning the whole overlay
+ * means nothing here depends on Spotify's internal modal markup.
+ */
+function ensureModal(title: string): HTMLElement {
+	if (!modalOverlay) {
+		modalOverlay = document.createElement("div");
+		modalOverlay.className = "lypos-modal-overlay";
+		modalOverlay.addEventListener("click", (e) => {
+			if (e.target === modalOverlay) closeSettings();
+		});
+		document.addEventListener("keydown", onModalKeydown);
+
+		const card = document.createElement("div");
+		card.className = "lypos-modal-card";
+
+		const header = document.createElement("div");
+		header.className = "lypos-modal-header";
+		const h = document.createElement("h2");
+		h.className = "lypos-modal-title";
+		const closeBtn = document.createElement("button");
+		closeBtn.className = "lypos-modal-close";
+		closeBtn.textContent = "✕";
+		closeBtn.title = t("tipClose");
+		closeBtn.onclick = () => closeSettings();
+		header.append(h, closeBtn);
+
+		const body = document.createElement("div");
+		body.className = "lypos-modal-body";
+
+		card.append(header, body);
+		modalOverlay.appendChild(card);
+		document.body.appendChild(modalOverlay);
+	}
+	(modalOverlay.querySelector(".lypos-modal-title") as HTMLElement).textContent = title;
+	const body = modalOverlay.querySelector(".lypos-modal-body") as HTMLElement;
+	body.innerHTML = "";
+	return body;
+}
+
 export function openSettings() {
 	const cfg = store.cfg;
+	const body = ensureModal(t("setTitle"));
 	const wrap = document.createElement("div");
 	wrap.className = "lypos-settings";
 
@@ -238,5 +295,5 @@ export function openSettings() {
 	actions.append(refetch, reset);
 	wrap.appendChild(actions);
 
-	Spicetify.PopupModal.display({ title: t("setTitle"), content: wrap });
+	body.appendChild(wrap);
 }

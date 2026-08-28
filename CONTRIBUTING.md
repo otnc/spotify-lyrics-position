@@ -81,3 +81,31 @@ normal browser for popup windows. Findings, in case they need revisiting:
 Both of the last two are enforced by Spotify's native app code (outside the renderer/webpage),
 so nothing in this extension can override them. If Spotify changes its window handling in a
 future release, it's worth re-testing before assuming these limitations still apply.
+
+## The settings dialog (`settings-ui.ts`) — do not use `Spicetify.PopupModal.display()`
+
+A Spotify client update (observed going from 1.2.95 to 1.2.98) broke the settings dialog's
+layout: the backdrop still rendered fine, but the actual content ended up nested inside
+`.main-trackCreditsModal-container` / `-header` / `-mainSection` — i.e. Spotify's generic modal
+now reuses the (narrow, content-hugging, ~160px wide) "Track Credits" modal's markup for
+arbitrary `PopupModal.display()` content instead of a proper flexible dialog. Confirmed by
+walking up the DOM from the dialog's own content via
+`document.querySelectorAll("*")` + `Runtime.evaluate` over CDP.
+
+This is the second time in this project a Spotify update has broken something by changing
+internal markup/behavior we don't control (see the separate-window findings above), so rather
+than patching around this specific class-name change, `openSettings()` now builds and owns its
+own overlay (`.lypos-modal-overlay` / `.lypos-modal-card` in `styles.css`) instead of calling
+`Spicetify.PopupModal.display()` at all. It's a plain fixed-position backdrop + centered card
+appended straight to `document.body`, closable via the × button, Escape, or a backdrop click.
+Repeat calls to `openSettings()` (language switch, reset-to-defaults) reuse the same overlay
+element and just replace its body content, rather than tearing down and recreating it.
+
+`main.ts`'s init gate no longer waits on `Spicetify.PopupModal` for this reason — nothing in the
+extension depends on it anymore. `Spicetify.PopupModal` itself is left in `types/spicetify.d.ts`
+in case something else ever needs it, but treat it as unreliable across Spotify updates.
+
+If Spotify's own UI (not just this dialog) starts looking broken after an update, first run
+`spicetify backup apply` — Spotify auto-updates can silently unpatch Spicetify entirely
+(`spicetify apply` will report "Spotify version and backup version are mismatched" when this
+happens), which looks similar from the outside but is a completely different problem.
