@@ -73,12 +73,20 @@ export function destroyTarget() {
 
 /** Right = the Now Playing View (the panel showing artwork, title, artist). */
 function findRightHost(): HTMLElement | null {
-	const sidebar = document.querySelector<HTMLElement>(".Root__right-sidebar");
-	// Skip while the sidebar is closed/collapsed so the card is never
-	// inserted into an invisible container.
+	// Use the panel ID when Spotify's sidebar class is not mapped by Spicetify.
+	const panel = document.querySelector<HTMLElement>("#Desktop_PanelContainer_Id");
+	const sidebar =
+		document.querySelector<HTMLElement>(".Root__right-sidebar") ??
+		Array.from(document.querySelectorAll<HTMLElement>(".Root__top-container > *")).find(
+			(el) => getComputedStyle(el).gridArea === "right-sidebar",
+		) ??
+		panel;
+	// A collapsed sidebar can retain a full-width panel; measure the outer grid item.
 	if (!sidebar || sidebar.getBoundingClientRect().width < 100) return null;
 	return (
+		(panel && sidebar.contains(panel) ? panel : null) ??
 		sidebar.querySelector<HTMLElement>('[data-testid="NPV_Panel"]') ??
+		(sidebar.matches("aside") ? sidebar : null) ??
 		sidebar.querySelector<HTMLElement>("aside") ??
 		// Never treat our own card as the host.
 		(Array.from(sidebar.children).find((el) => !el.classList.contains("lypos-card")) as
@@ -89,7 +97,7 @@ function findRightHost(): HTMLElement | null {
 
 /** Left = the library sidebar. */
 function findLeftHost(): HTMLElement | null {
-	const nav = document.querySelector<HTMLElement>(".Root__nav-bar");
+	const nav = document.querySelector<HTMLElement>("#Desktop_LeftSidebar_Id, .Root__nav-bar");
 	// A collapsed (icon-only) library is too narrow to host the card.
 	if (!nav || nav.getBoundingClientRect().width < 150) return null;
 	return nav;
@@ -120,6 +128,7 @@ function buildSidebarCard(host: HTMLElement, kind: Mode) {
 
 	const ui = makeContentUI(document, { closable: true });
 	card.append(ui.toolbar, ui.scroller);
+	if (host.id === "Desktop_PanelContainer_Id") host.classList.add("lypos-sidebar-host");
 	host.insertBefore(card, host.firstChild);
 
 	store.target = {
@@ -132,6 +141,7 @@ function buildSidebarCard(host: HTMLElement, kind: Mode) {
 		win: null,
 		destroy() {
 			card.remove();
+			host.classList.remove("lypos-sidebar-host");
 		},
 	};
 	applyColors();
@@ -152,7 +162,8 @@ export function ensureSidebarCard() {
 		const healthy =
 			target.root.isConnected &&
 			target.root.getBoundingClientRect().width > 0 &&
-			(!host || target.root.parentElement === host);
+			target.root.getBoundingClientRect().height > 0 &&
+			target.root.parentElement === host;
 		if (healthy) return;
 		destroyTarget();
 	}
@@ -173,7 +184,13 @@ export function startSidebarObserver() {
 			ensureSidebarCard();
 		}, 300);
 	});
-	observer.observe(document.body, { childList: true, subtree: true });
+	observer.observe(document.body, {
+		childList: true,
+		subtree: true,
+		attributes: true,
+		attributeFilter: ["class", "style", "hidden"],
+	});
+	window.addEventListener("resize", ensureSidebarCard);
 }
 
 /* ---------- In-app popup ---------- */
